@@ -1,0 +1,129 @@
+---
+title: "L9: Introduction to Computer Vision"
+format:
+  html:
+    code-fold: false
+page-navigation: true
+---
+
+## Introduction to Computer Vision
+
+The goal of Computer Vision is simple: to extract meaning from pictures and pixels. When we look at an image, we see a train crash or a beautiful landscape. But what does a computer see? Just a series of numbers or a matrix of numbers. The ideal goal would be to make the computer perceive the image like how we humans do. The same principle applies to videos, which are just a series of images played one after another.
+
+![Image_9.1.1](Image_9.1.1)
+
+Given an image, we can extract basically two types of information:
+
+1. **Semantic Information:** What objects are present and labeling them. Think of it as the grammar of vision.
+2. **Metric Information:** Measuring distances, depths, and 3D structure. Basically, using vision to measure things in the real world.
+
+---
+
+### Semantic Computer Vision Tasks
+
+#### Object Recognition
+
+The goal here is simple: given an image with one dominant object, we want to label it. There's a very famous worldwide challenge called the ImageNet challenge which consists of 1000 classes with each class containing 1000 instances (examples).
+
+#### Object Detection
+
+In the real world, there are usually multiple objects in one image and we want to label them all. We want to detect all these objects, localize where each object is present, and name them accordingly. This is much more challenging than simple recognition.
+
+**Practical Examples:**
+- **Face Detection:** Useful in security cameras and passport offices.
+- **Number Plate Reader:** First localize where the number plate is, then recognize the letters and return a meaningful number plate.
+
+#### Image Segmentation
+
+This refers to segmenting semantically similar objects or pixels. Each pixel of an object is individually segmented and labeled. It's very similar to clustering — for example, all pixels of a road are grouped together, all car pixels together, etc.
+
+This is extremely important for autonomous driving where the car needs to know what's road (safe to drive on) and what's not (avoid obstacles).
+
+![Segmented image showing different colors for road, cars, buildings, sky](segmentation_example.png)
+
+#### Object Tracking
+
+As the name suggests, it refers to tracking objects as they move across video frames — things like cars and people moving through a scene.
+
+![Video showing tracked objects with trails](object_tracking.gif)
+
+#### Pose Tracking
+
+Used to detect the pose of a person. This connects with activity recognition where we detect whether a person is playing volleyball, standing, or running. A great practical example is in sports analysis.
+
+![Video showing skeleton overlay on person doing various activities](pose_tracking.gif)
+
+#### Image Captioning
+
+We use this to identify the contents of an image and summarize it. It's basically image-to-language translation where we describe what's happening in the image using natural language.
+
+**Example:**  
+"A person riding on a motorcycle on a dirt road"
+
+![Image with generated caption below it](captioning_example.png)
+
+---
+
+### Geometric Computer Vision: Vision for Measurement
+
+#### Depth From Stereo
+
+We use two cameras (like human eyes) and do point correspondence to find where an object appears in both images. When we detect matching points, we triangulate to get the depth. This helps us measure how far objects are from the camera. This method is geometrically accurate.
+
+![Diagram showing two cameras and triangulation process](stereo_depth.png)
+
+#### Depth From Single Image
+
+Here we cannot do geometrically correct depth estimation but can still get a relative idea. We use various cues:
+
+- **Occlusion:** If one object blocks another, the blocking object is closer.
+- **Size:** If I see two cars on a road, the bigger-appearing car is closer to me.
+- **Shadows:** Provide depth information.
+
+Nowadays there are many deep learning algorithms that work well for single-image depth estimation.
+
+![Single image depth estimation](single_image_depth.png)
+
+#### Structure From Motion
+
+We use multiple cameras looking at the same scene OR one camera moved around capturing multiple images. The goal is 3D reconstruction of the scene. Multiple viewpoints are crucial for getting a good 3D model.
+
+![Video showing castle reconstruction from multiple viewpoints](sfm_castle.gif)
+
+#### Photometric Studio
+
+Here the camera is fixed but lighting is changed. We capture multiple images with various lighting conditions. We get shading cues and can calculate surface normals, which help us determine depth and 3D structure.
+
+![Same object under different lighting conditions](photometric_studio.png)
+
+---
+
+### Challenges
+
+- **Viewpoint Variation:**  
+  We're used to seeing faces upright. But if we train a model only on upright faces, it won't work when the same face is rotated.  
+  *Solution:* Augment training data with various viewpoints.  
+  ![Same face at different orientations](viewpoint_variation.png)
+
+- **Illumination Variation:**  
+  Images can look drastically different when lighting changes. Even humans struggle when illumination is vastly different. Algorithms must be illumination-invariant.  
+  ![Same scene under different lighting - sunny, cloudy, night](illumination_variation.png)
+
+- **Scale Variation:**  
+  Objects appear at different sizes depending on distance. We need to handle multiple scales simultaneously.
+
+- **Deformation:**  
+  Non-rigid objects like humans and animals change shape constantly. A horse standing vs. running looks very different.
+
+- **Occlusion:**  
+  Target objects are often partially hidden by other objects, making recognition difficult.
+
+- **Background Clutter:**  
+  Too much background noise makes it hard to focus on the target object. Like finding a specific insect in a very cluttered environment.
+
+- **Motion Blur:**  
+  Moving objects create blurred images, making recognition challenging.
+
+- **Intra-class Variation:**  
+  Objects in the same category can look vastly different. Chairs come in hundreds of different shapes and styles, but they're all still "chairs."  
+  ![Grid showing many different types of chairs](intra_class_variation.png)

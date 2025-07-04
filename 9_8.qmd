@@ -1,0 +1,159 @@
+---
+title: "L9.8: Image Classification- Evaluating a model"
+format:
+  html:
+    code-fold: false
+page-navigation: true
+---
+
+# 1. Introduction
+
+This tutorial demonstrates how to evaluate two popular pretrained convolutional neural networks—**VGG16** and **ResNet18**—on the ImageNet-mini validation dataset using PyTorch. The workflow covers data preprocessing, model loading, and performance evaluation, providing a practical example of transfer learning and model benchmarking.
+
+# 2. Data Preparation and Preprocessing
+
+## 2.1. Importing Libraries
+
+The following libraries are used:
+
+- `torch`: Core PyTorch library for deep learning.
+- `torchvision`: For datasets, models, and image transformations.
+- `os`: For file path management.
+
+```{python}
+import torch
+import torchvision.transforms as transforms
+from torchvision.datasets import ImageFolder
+from torchvision.models import vgg16, resnet18
+from torch.utils.data import DataLoader
+import os
+```
+
+## 2.2. Device Setup
+
+The code automatically selects a GPU if available, otherwise defaults to CPU.
+
+```{python}
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+```
+
+## 2.3. Image Transformations
+
+Images are preprocessed to match the input requirements of VGG16 and ResNet18:
+
+- Resize to 256 pixels (shorter side).
+- Center crop to 224×224 pixels.
+- Convert to tensor.
+- Normalize using ImageNet mean and standard deviation.
+
+```{python}
+transform = transforms.Compose([
+    transforms.Resize(256),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+```
+
+## 2.4. Loading the Dataset
+
+The validation set from ImageNet-mini is loaded using `ImageFolder`, which expects images to be organized in subfolders by class.
+
+```{python}
+dataset_path = '/kaggle/input/imagenetmini-1000/imagenet-mini'
+val_dataset = ImageFolder(root=os.path.join(dataset_path, 'val'), transform=transform)
+val_loader = DataLoader(val_dataset, batch_size=128, shuffle=False)
+print(f"Validation set size: {len(val_dataset)}")
+```
+
+# 3. Model Evaluation Function
+
+A reusable function is defined to evaluate any model on the validation set. It computes the overall accuracy by comparing predicted and true labels.
+
+```{python}
+def evaluate_model(model, data_loader, device='cuda'):
+    model.eval()
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for inputs, labels in data_loader:
+            inputs, labels = inputs.to(device), labels.to(device)
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    return correct / total
+```
+
+# 4. Evaluating VGG16
+
+## 4.1. Loading the Pretrained Model
+
+The VGG16 model is loaded with pretrained ImageNet weights and moved to the selected device.
+
+```{python}
+vgg_model = vgg16(pretrained=True).to(device)
+```
+
+**Model Architecture Overview:**
+
+- Features: 13 convolutional layers (all 3×3), interleaved with ReLU activations and max pooling.
+- Classifier: Three fully connected layers (4096, 4096, 1000 units), with dropout for regularization.
+
+## 4.2. Model Summary
+
+The model summary shows the sequence of convolutional, activation, pooling, and fully connected layers, matching the classic VGG16 design.
+
+```{python}
+print(vgg_model)
+```
+
+## 4.3. Evaluation
+
+The model is evaluated on the validation set:
+
+```{python}
+vgg_accuracy = evaluate_model(vgg_model, val_loader, device=device)
+print(f'VGG16 Accuracy on ImageNet: {vgg_accuracy * 100:.2f}%')
+```
+
+_Result:_  
+VGG16 achieves an accuracy of approximately **70.41%** on the ImageNet-mini validation set.
+
+# 5. Evaluating ResNet18
+
+## 5.1. Loading the Pretrained Model
+
+The ResNet18 model is loaded with pretrained ImageNet weights and moved to the device.
+
+```{python}
+resnet_model = resnet18(pretrained=True).to(device)
+```
+
+**Model Architecture Overview:**
+
+- Initial Layer: 7×7 convolution, batch normalization, ReLU, and max pooling.
+- Residual Blocks: Four groups of residual blocks (with skip connections), each increasing the number of channels (64, 128, 256, 512).
+- Global Average Pooling: Reduces each feature map to a single value.
+- Fully Connected Layer: Outputs 1000 class scores.
+
+## 5.2. Model Summary
+
+The summary details the sequence of convolutional, batch normalization, activation, pooling, and residual blocks, characteristic of ResNet architectures.
+
+```{python}
+print(resnet_model)
+```
+
+## 5.3. Evaluation
+
+The model is evaluated on the validation set:
+
+```{python}
+resnet_accuracy = evaluate_model(resnet_model, val_loader, device=device)
+print(f'ResNet18 Accuracy on ImageNet: {resnet_accuracy * 100:.2f}%')
+```
+
+_Result:_  
+ResNet18 achieves an accuracy of approximately **69.97%** on the ImageNet-mini validation set.

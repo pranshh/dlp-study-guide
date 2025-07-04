@@ -1,0 +1,71 @@
+---
+title: "L9.3: Convolutional Neural Networks"
+format:
+  html:
+    code-fold: false
+page-navigation: true
+---
+
+## Convolutional Neural Networks
+
+### Why Not Use MLPs for Images?
+
+A straightforward approach for images might be to use a Multi-Layer Perceptron (MLP) by flattening the image into a long vector and feeding it into a fully connected network. However, this quickly becomes impractical. For example, a standard color image of size 224×224×3 has over 150,000 values. If every input is connected to every neuron in the next layer, the number of parameters explodes, making the network extremely large and difficult to train or even store.
+
+Even more importantly, flattening an image destroys its spatial structure. The local relationships between pixels—such as edges, textures, and shapes—are lost, which are essential for understanding visual content.
+
+![Side-by-side illustration of a 2D image grid and its flattened 1D vector representation, highlighting the loss of spatial structure.](flattening_loss.png)
+
+---
+
+### The CNN Solution: Preserving Spatial Structure
+
+Convolutional Neural Networks (CNNs) were designed specifically to address these issues. Unlike MLPs, CNNs take advantage of the two-dimensional structure of images. Instead of connecting every input pixel to every neuron in the next layer, CNNs use local connections: each neuron in a convolutional layer is connected only to a small, localized region of the input, known as its receptive field. This preserves spatial relationships and drastically reduces the number of parameters.
+
+Another key innovation in CNNs is **parameter sharing**. Rather than learning a separate set of weights for every location in the image, CNNs use the same set of weights—called a filter or kernel—across the entire image. This means the same feature detector (such as an edge detector) is applied everywhere, making the network much more efficient and robust to translations of objects within the image.
+
+![Diagram of a convolutional filter sliding across an image, showing local connections and shared weights.](conv_filter_slide.png)
+
+---
+
+### The Building Blocks of CNNs
+
+A typical CNN consists of several types of layers arranged in sequence:
+
+- **Convolutional Layer:** Filters scan across the image and produce feature maps that highlight specific patterns such as edges or textures.
+- **Activation Function (ReLU):** Introduces nonlinearity, allowing the network to learn more complex patterns.
+- **Pooling Layer:** Reduces the spatial dimensions of the feature maps. The most common is max pooling, which takes the maximum value from a small region, reducing data size and helping the network become more invariant to small translations or distortions.
+
+As data passes through multiple convolutional and pooling layers, the network learns increasingly abstract features. Early layers might detect simple edges, while deeper layers can recognize complex shapes or even entire objects. Eventually, the feature maps are flattened into a vector and passed through one or more fully connected layers, culminating in a softmax layer that outputs class probabilities for tasks like object recognition.
+
+![Block diagram: Image → [Conv → ReLU → Pool] × N → Flatten → Fully Connected → Softmax.](cnn_block_diagram.png)
+
+---
+
+### How CNNs Handle Multiple Channels and Features
+
+For color images, filters operate across all three channels (red, green, blue) simultaneously. Each filter produces a feature map, and by using multiple filters, the network can detect a variety of patterns at each layer. The result is a stack of feature maps, each highlighting different aspects of the input image.
+
+![Filter operating across RGB channels and producing multiple feature maps.](cnn_channels.png)
+
+---
+
+### Hyperparameters and Operations in CNNs
+
+CNNs come with several important hyperparameters:
+
+- **Padding:** Adding zeros around the border of the image to control the size of the output feature map and prevent shrinking.
+- **Stride:** Determines how far the filter moves at each step; a larger stride reduces the output size.
+- **Pooling Size and Stride:** Control how much the feature map is reduced in the pooling layers.
+
+The choice of activation function is also crucial. While sigmoid functions can cause vanishing gradients (making training difficult), the **ReLU** function (Rectified Linear Unit) is widely used for its simplicity and effectiveness. ReLU outputs zero for negative values and the input itself for positive values, helping networks train faster and avoid some common pitfalls.
+
+![Side-by-side comparison of sigmoid and ReLU activation functions with their graphs.](activation_comparison.png)
+
+---
+
+### Why CNNs Excel at Vision Tasks
+
+The combination of local connectivity, parameter sharing, pooling, and nonlinearity makes CNNs uniquely suited for image data. They are able to learn spatial hierarchies of features, efficiently handle large input sizes, and are robust to translations and distortions in the image. This architecture has made CNNs the foundation for most modern computer vision tasks, from simple image classification to complex object detection and segmentation.
+
+![Flowchart summarizing the CNN pipeline and its advantages over MLPs.](cnn_vs_mlp.png)

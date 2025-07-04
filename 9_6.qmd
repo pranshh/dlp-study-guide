@@ -1,0 +1,136 @@
+---
+title: "L9.6: Case Study – GoogleNet (Inception) & ResNet"
+format:
+  html:
+    code-fold: false
+page-navigation: true
+---
+
+## Introduction
+
+GoogleNet (also known as Inception) and ResNet are two milestone architectures in the evolution of deep convolutional neural networks (CNNs). Both were designed to address the challenges of training deep networks—such as computational cost, vanishing gradients, and parameter explosion—while achieving state-of-the-art accuracy on large-scale image recognition tasks.
+
+---
+
+## GoogleNet (Inception): Deep, Efficient, and Modular
+
+**GoogleNet** is a 22-layer deep architecture that introduced the **Inception module**—a building block designed to capture information at multiple scales while keeping the network computationally efficient.
+
+### The Inception Module
+
+The core idea of the Inception module is to apply several different types of filters in parallel to the same input, and then concatenate their outputs. Specifically, each module performs:
+
+- **1×1 Convolution:** Acts as a bottleneck layer for dimensionality reduction (reducing the number of channels), which decreases computation and parameters.
+- **3×3 Convolution:** Captures local features.
+- **5×5 Convolution:** Captures larger context.
+- **3×3 Max Pooling:** Adds robustness to spatial transformations.
+
+All these outputs are concatenated along the channel dimension, allowing the network to "look" at the input at different receptive field sizes simultaneously.
+
+![Inception module block diagram: parallel 1x1, 3x3, 5x5 convolutions and pooling, merged into one output](inception_module.png)
+
+#### Why 1×1 Convolutions?
+
+A **1×1 convolution** at each spatial location computes a weighted sum across all input channels, effectively projecting a high-dimensional feature vector to a lower-dimensional space (or vice versa). This reduces the number of channels (feature maps), which:
+- **Reduces computation:** Fewer channels means fewer multiplications in subsequent convolutions.
+- **Acts as a feature selector:** Learns which combinations of channels are important.
+
+Mathematically, for an input tensor of shape $$H \times W \times C_{in}$$, a 1×1 convolution with $$C_{out}$$ filters produces an output of shape $$H \times W \times C_{out}$$, requiring $$C_{in} \times C_{out}$$ multiplications per spatial location.
+
+![1x1 convolution projecting a depth-64 vector at each pixel to a depth-32 vector](conv1x1_projection.png)
+
+#### Efficiency and Depth
+
+Despite being deeper (22 layers) than AlexNet (8 layers) or VGGNet (16–19 layers), GoogleNet has far fewer parameters—about **5 million** compared to AlexNet’s 60 million and VGG’s 100+ million. This is largely due to the use of 1×1 convolutions and the modular design.
+
+#### Auxiliary Classifiers
+
+To mitigate the **vanishing gradient** problem in deep networks, GoogleNet introduces **auxiliary classifiers** at intermediate layers. These are small classifiers attached to the middle of the network during training, providing additional gradient signals and helping the main network learn better. These branches are only used during training and discarded during inference.
+
+#### Output and Training
+
+- **Global Average Pooling** is used before the final classification layer, reducing each feature map to a single value and minimizing overfitting.
+- Only a single fully connected layer is used at the end to match the number of output classes.
+
+---
+
+## ResNet: Going Deeper with Residual Connections
+
+**ResNet** (Residual Network) marked a dramatic leap in depth, with successful architectures reaching up to 152 layers. Its central innovation is the **residual block**.
+
+### The Residual Block
+
+Instead of learning a direct mapping from input $$x$$ to output $$H(x)$$, a residual block learns the **residual function** $$F(x) = H(x) - x$$, so the output becomes $$H(x) = F(x) + x$$. This is implemented with a **skip connection** or **shortcut connection** that bypasses one or more layers:
+
+$$
+\text{output} = F(x, \{W_i\}) + x
+$$
+
+Where $$F(x, \{W_i\})$$ is the output of the stacked convolutional layers and $$x$$ is the input to the block.
+
+![Residual block: input x goes through convolutions and is added back to the output via a skip connection](residual_block.png)
+
+#### Why Residual Connections?
+
+- **Eases Optimization:** Skip connections allow gradients to flow directly through the network, alleviating the vanishing gradient problem and making it possible to train much deeper networks.
+- **Identity Mapping:** If the optimal function is close to the identity, the network can easily learn to set the residual to zero.
+- **Empirical Result:** Deeper plain networks (without residuals) often perform worse due to optimization difficulties, even on training data. Residual connections fix this.
+
+#### Bottleneck Blocks
+
+For very deep versions (ResNet-50, ResNet-101, ResNet-152), **bottleneck blocks** are used:
+- **1×1 convolution** to reduce dimensionality
+- **3×3 convolution** for spatial processing
+- **1×1 convolution** to restore dimensionality
+
+This pattern makes deep networks more parameter- and computation-efficient.
+
+#### Downsampling and Channel Doubling
+
+At certain stages, ResNet reduces the spatial dimension (e.g., from 56×56 to 28×28) using **strided convolutions** and **doubles the number of channels** to preserve representational power.
+
+#### Final Layers
+
+- **Global Average Pooling** collapses the spatial dimension before the final fully connected layer, which outputs class scores.
+- The architecture can be scaled to different depths: ResNet-18, ResNet-34 (basic blocks), ResNet-50, ResNet-101, ResNet-152 (bottleneck blocks).
+
+---
+
+## Mathematical Details
+
+### Inception Module Output Size
+
+If an input of size $$H \times W \times C_{in}$$ passes through parallel branches:
+- 1×1 conv with $$N_1$$ filters: output $$H \times W \times N_1$$
+- 3×3 conv with $$N_3$$ filters: output $$H \times W \times N_3$$
+- 5×5 conv with $$N_5$$ filters: output $$H \times W \times N_5$$
+- 3×3 max pooling (with $$N_p$$ filters after): output $$H \times W \times N_p$$
+
+After concatenation, the output is $$H \times W \times (N_1 + N_3 + N_5 + N_p)$$.
+
+### Residual Block Formula
+
+For a residual block with input $$x$$:
+
+$$
+\text{output} = F(x, \{W_i\}) + x
+$$
+
+Where $$F(x, \{W_i\})$$ is typically two consecutive 3×3 convolutions with batch normalization and ReLU activation.
+
+If input and output dimensions differ, a 1×1 convolution can be applied to $$x$$ to match shapes before addition.
+
+---
+
+## Summary Table
+
+| Feature                | GoogleNet (Inception)      | ResNet                        |
+|------------------------|---------------------------|-------------------------------|
+| Depth                  | 22 layers                 | 18, 34, 50, 101, 152+ layers  |
+| Key Module             | Inception (multi-branch)  | Residual block (skip conn.)   |
+| 1×1 Convolutions       | For dimension reduction   | For bottleneck blocks         |
+| Auxiliary Classifiers  | Yes (during training)     | No                            |
+| Fully Connected Layers | Only at output            | Only at output                |
+| Global Avg Pooling     | Yes                       | Yes                           |
+| Parameters             | ~5M                       | Varies (e.g., ~25M for ResNet-50) |
+| Main Innovation        | Multi-scale feature extraction | Easy

@@ -1,0 +1,97 @@
+---
+title: "L9.2: Deep Learning for Computer Vision"
+format:
+  html:
+    code-fold: false
+page-navigation: true
+---
+
+## Deep Learning for Computer Vision
+
+### Traditional Computer Vision Approaches
+
+#### Direct Classification
+
+Early methods fed the image directly into a classical classifier (e.g., logistic regression).
+
+- **Limitation:** Accuracy is poor due to large variations in images (illumination, viewpoint, etc.).
+
+![Simple pipeline: image → classical classifier → label](direct_classification.png)
+
+#### Feature Extraction
+
+- **Edge Extraction:** Instead of raw images, extract edges and feed the edge map to the classifier.
+  - **Advantage:** Edge maps are invariant to color and illumination, making classification easier.
+  - **Example:** A red bus and a green bus have similar edge maps, so color variation doesn't confuse the classifier.
+
+![Buses of different colors with identical edge maps](edge_maps.png)
+
+- **Histogram of Edges:** Compute histograms of edge features.
+  - **Advantage:** Provides some tolerance to small shifts and misalignments in the image.
+  - **Further Steps:** Sparse coding of histograms for even more robust features.
+
+![Edge extraction and histogram computation](edge_histogram.png)
+
+#### Manual Feature Engineering
+
+Classical computer vision relied heavily on manually designed features (edges, histograms, etc.).
+
+- **Drawback:** Requires domain expertise and manual tuning for each new problem.
+
+---
+
+### The Shift to Deep Learning
+
+#### Motivation
+
+- **Problem:** Manual feature design is tedious, requires deep domain knowledge, and may not generalize well.
+- **Solution:** Let the machine automatically learn the best features from data instead of hand-crafting them.
+
+#### Deep Learning Approach
+
+- **Architecture:** Stack multiple layers of feature extraction (e.g., convolutional layers).
+- **Learning:** Each layer learns increasingly abstract features, from edges to textures to object parts.
+- **End-to-End Training:** The entire system is trained together using backpropagation, learning both features and classification simultaneously.
+
+![Deep neural network with multiple layers extracting features](deep_network_layers.png)
+
+---
+
+### Neural Networks: The Building Blocks
+
+#### The Perceptron
+
+- **Inspiration:** Modeled after a biological neuron.
+- **Mechanism:** Takes weighted inputs, sums them, applies a threshold (activation function), and outputs a binary result.
+- **Limitation:** Can only solve problems where data is linearly separable (e.g., AND, OR gates).
+
+![Diagram of a perceptron](perceptron_diagram.png)
+
+#### Linear Separability
+
+- **Example:** For AND/OR, a single line can separate classes in 2D space.
+- **Limitation:** Cannot solve problems like XOR, where no single line can separate the classes.
+
+![Linearly separable vs non-linearly separable data](linear_vs_nonlinear.png)
+
+#### Multi-Layer Perceptron (MLP)
+
+- **Solution:** Add hidden layers (multiple neurons in each layer).
+- **Power:** With at least one hidden layer, the network can model more complex functions (e.g., XOR).
+- **Scalability:** More layers and neurons allow modeling of highly complex patterns.
+
+![MLP with input, hidden, and output layers](mlp_diagram.png)
+
+---
+
+### Deep Learning for Images
+
+- **Feature Hierarchy:** Each layer in a deep network extracts progressively more complex features:
+  - First layer: Edges
+  - Second layer: Contours
+  - Third layer: Object parts
+  - Final layers: Full objects and classification
+
+- **Convolutional Neural Networks (CNNs):** Especially effective for images, as they can capture spatial hierarchies automatically.
+
+![CNN layers visualizing edge, contour, and object detection](cnn_hierarchy.png)

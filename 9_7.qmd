@@ -1,0 +1,401 @@
+---
+title: "L9.7: Image Classification – Preprocessing and Training with AlexNet"
+format:
+  html:
+    code-fold: false
+page-navigation: true
+---
+
+# 1. Data Processing and Visualization
+
+## 1.1. Importing Libraries
+
+```{python}
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchvision
+import torchvision.datasets as dsets
+import torchvision.models as models
+import torchvision.transforms as transforms
+import torchvision.utils as utils
+from torch.utils.data import Dataset, DataLoader, random_split
+from tqdm import tqdm
+
+import matplotlib.pyplot as plt
+import numpy as np
+import time
+from sklearn.metrics import classification_report, confusion_matrix, ConfusionMatrixDisplay
+
+torch.manual_seed(0)
+```
+
+## 1.2. Downloading and Augmenting Data
+
+**Dataset:**  
+- Uses CIFAR-10, which contains 60,000 color images (32×32 pixels) across 10 classes.
+
+**Data Augmentation Steps:**
+- Resize images to 227×227 (AlexNet input size).
+- Random horizontal flip (50% chance).
+- Random crop with padding.
+- Normalize using dataset mean and standard deviation.
+
+```{python}
+transform = transforms.Compose([
+    transforms.Resize((227, 227)),
+    transforms.RandomHorizontalFlip(0.5),
+    transforms.RandomCrop(227, padding=4),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.491, 0.482, 0.447], std=[0.247, 0.244, 0.262])
+])
+
+train_data = dsets.CIFAR10(root='./data', train=True, download=True, transform=transform)
+test_data = dsets.CIFAR10(root='./data', train=False, download=True, transform=transform)
+print(train_data.data.dtype)
+print(train_data.data.shape)
+```
+
+## 1.3. Dataset Splitting and Visualization
+
+```{python}
+train_size_fraction = 0.8
+train_size = int(train_size_fraction * len(train_data))
+val_size = len(train_data) - train_size
+train_dataset, val_dataset = random_split(train_data, [train_size, val_size])
+```
+
+Helper function to inverse normalize images for visualization:
+
+```{python}
+def inverse_normalize(image, mean, std):
+    for i in range(image.shape[0]):
+        image[i] = image[i] * std[i] + mean[i]
+    return image.clamp(0, 1)
+```
+
+Label mapping for class names:
+
+```{python}
+label_map = {
+    0: "Airplane", 1: "Automobile", 2: "Bird", 3: "Cat", 4: "Deer",
+    5: "Dog", 6: "Frog", 7: "Horse", 8: "Ship", 9: "Truck"
+}
+```
+
+Function to display original and transformed images:
+
+```{python}
+def show_image(data, idx, label_map):
+    original_image = data.data[idx]
+    original_label = data.targets[idx]
+    transformed_image, transformed_label = data[idx]
+    transformed_image = inverse_normalize(transformed_image, mean=[0.491, 0.482, 0.447], std=[0.247, 0.244, 0.262])
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    axes[0].imshow(original_image)
+    axes[0].set_title(f'Original: {label_map[original_label]}')
+    axes[0].axis('off')
+    axes[1].imshow(transformed_image.permute(1, 2, 0))
+    axes[1].set_title(f'Transformed: {label_map[transformed_label]}')
+    axes[1].axis('off')
+    plt.show()
+```
+
+Example usage:
+
+```{python}
+idx = 5
+show_image(train_data, idx, label_map)
+```
+
+## 1.4. Data Loaders
+
+```{python}
+batch_size = 128
+train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True)
+val_loader = DataLoader(dataset=val_dataset, batch_size=batch_size, shuffle=False)
+test_loader = DataLoader(dataset=test_data, batch_size=batch_size, shuffle=False)
+
+print("No. of samples in training dataset:", len(train_loader.dataset))
+print("No. of samples in validation dataset:", len(val_loader.dataset))
+print("No. of samples in test dataset:", len(test_loader.dataset))
+```
+
+Visualize a batch of images:
+
+```{python}
+dataiter = iter(train_loader)
+images, labels = next(dataiter)
+print(images.shape)
+plt.imshow(utils.make_grid(images).permute(1, 2, 0))
+plt.title('Batch of Transformed CIFAR-10 Images')
+plt.axis('off')
+plt.show()
+```
+
+# 2. Training the Model
+
+## 2.1. AlexNet Architecture
+
+AlexNet is a deep CNN with 5 convolutional layers, 3 max-pooling layers, 2 normalized layers, 2 fully connected layers, and a softmax output. The input size is 227×227×3.
+
+```{python}
+class AlexNet(nn.Module):
+    def __init__(self, num_classes=10):
+        super(AlexNet, self).__init__()
+        self.model = nn.Sequential(
+            nn.Conv2d(3, 96, kernel_size=11, stride=4),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(96, 256, kernel_size=5, stride=1, padding='same'),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Conv2d(256, 384, kernel_size=3, stride=1, padding='same'),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(384, 384, kernel_size=3, stride=1, padding='same'),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(384, 256, kernel_size=3, stride=1, padding='same'),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=3, stride=2),
+            nn.Flatten(),
+            nn.Linear(256*6*6, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(4096, 4096),
+            nn.ReLU(inplace=True),
+            nn.Dropout(),
+            nn.Linear(4096, num_classes)
+        )
+
+    def forward(self, x):
+        return self.model(x)
+```
+
+Move model to GPU if available:
+
+```{python}
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"Model will be trained using {device}.")
+```
+
+## 2.2. Helper Functions
+
+Calculate correct predictions:
+
+```{python}
+def calculate_correct_predictions(out, labels):
+    _, pred = torch.max(out, dim=1)
+    return torch.sum(pred == labels).item()
+```
+
+Measure epoch time:
+
+```{python}
+def epoch_time(start_time, end_time):
+    elapsed_time = end_time - start_time
+    elapsed_mins = int(elapsed_time / 60)
+    elapsed_secs = int(elapsed_time - (elapsed_mins * 60))
+    return elapsed_mins, elapsed_secs
+```
+
+## 2.3. Model Creation and Training
+
+Model creation function (supports AlexNet, VGG16, ResNet18):
+
+```{python}
+def create_model(model_name='AlexNet', device='cuda'):
+    if model_name == 'AlexNet':
+        model = AlexNet()
+    elif model_name == 'VGG16':
+        model = models.vgg16(pretrained=True)
+        for param in model.parameters():
+            param.requires_grad = False
+        model.classifier[6] = torch.nn.Linear(4096, 10)
+    elif model_name == 'ResNet18':
+        model = models.resnet18(pretrained=True)
+        for param in model.parameters():
+            param.requires_grad = False
+        model.fc = torch.nn.Linear(512, 10)
+    else:
+        raise ValueError("Model not supported. Choose from 'VGG16', 'AlexNet', or 'ResNet18'.")
+    return model.to(device)
+```
+
+Training function:
+
+```{python}
+def train_model(model, model_name, train_loader, val_loader, criterion, optimizer, num_epochs, device):
+    cost_train_list = []
+    accuracy_train_list = []
+    accuracy_val_list = []
+    best_accuracy = 0
+    start_time = time.time()
+    save_path = f'best_model_{model_name.lower()}.pth'
+    print(f"Model will be saved as '{save_path}'")
+    for epoch in range(1, num_epochs+1):
+        print(f"------------------------ Epoch No. {epoch} ------------------------")
+        start_epoch = time.time()
+        running_loss = 0
+        correct_train, correct_val = 0, 0
+        with tqdm(total=len(train_loader), desc=f'Epoch {epoch}/{num_epochs}', unit='batch') as tepoch:
+            for images, labels in train_loader:
+                images = images.to(device)
+                labels = labels.to(device)
+                optimizer.zero_grad()
+                outputs = model(images)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                running_loss += loss.item()
+                optimizer.step()
+                correct_train += calculate_correct_predictions(outputs, labels)
+                tepoch.set_postfix(loss=running_loss / (tepoch.n + 1), accuracy=(correct_train / ((tepoch.n + 1) * train_loader.batch_size)) * 100)
+                tepoch.update()
+        cost_train_list.append(running_loss)
+        acc_train = (correct_train / len(train_loader.dataset)) * 100
+        accuracy_train_list.append(acc_train)
+        print(f"\nEpoch {epoch}: Accuracy on Train Set = {acc_train:.2f} %, Training Cost = {running_loss:.2f}")
+        print(f"Validation begins for Epoch {epoch}...")
+        with torch.no_grad():
+            for x_val, y_val in val_loader:
+                x_val = x_val.to(device)
+                y_val = y_val.to(device)
+                z = model(x_val)
+                correct_val += calculate_correct_predictions(z, y_val)
+        acc_val = (correct_val / len(val_loader.dataset)) * 100
+        accuracy_val_list.append(acc_val)
+        if acc_val > best_accuracy:
+            best_accuracy = acc_val
+            torch.save(model.state_dict(), save_path)
+            print(f"Model saved with accuracy: {best_accuracy:.2f} %")
+        print(f"Epoch {epoch}: Accuracy on Validation Set = {acc_val:.2f} %")
+        end_epoch = time.time()
+        epoch_mins, epoch_secs = epoch_time(start_epoch, end_epoch)
+        print(f"Runtime for Epoch {epoch}: {epoch_mins} minutes and {epoch_secs} seconds.\n")
+        torch.cuda.empty_cache()
+    end_time = time.time()
+    total_mins, total_secs = epoch_time(start_time, end_time)
+    print(f"\nTotal Runtime: {total_mins} minutes and {total_secs} seconds.")
+    return model, [cost_train_list, accuracy_train_list, accuracy_val_list]
+```
+
+Training example:
+
+```{python}
+model = create_model('AlexNet', device)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.0001)
+num_epochs = 8
+model_name = 'New_AlexNet'
+model, training_curves_list = train_model(model, model_name, train_loader, val_loader, criterion, optimizer, num_epochs, device)
+```
+
+## 2.4. Plotting Training Curves
+
+```{python}
+def plot_training_curves(training_curves_list, model_name):
+    cost_train_list = training_curves_list[0]
+    accuracy_train_list = training_curves_list[1]
+    accuracy_val_list = training_curves_list[2]
+    fig, axs = plt.subplots(2, 1, figsize=(8, 12))
+    axs[0].plot(np.arange(1, num_epochs + 1, 1), cost_train_list, marker=".", markersize="8", label="Training Loss", color="red")
+    axs[0].set_xlabel('Epochs', fontsize=15)
+    axs[0].set_ylabel("Training Loss", fontsize=15)
+    axs[0].set_title('Training Loss of AlexNet', color="blue")
+    axs[0].grid(linestyle='--')
+    axs[0].legend()
+    axs[1].plot(np.arange(1, num_epochs + 1, 1), accuracy_train_list, marker=".", markersize="8", label="Training Dataset Accuracy", color="blue")
+    axs[1].plot(np.arange(1, num_epochs + 1, 1), accuracy_val_list, marker=".", markersize="8", label="Validation Dataset Accuracy", color="green")
+    axs[1].set_xlabel('Epochs', fontsize=15)
+    axs[1].set_ylabel("Accuracy (in %)", fontsize=15)
+    axs[1].set_title('Training and Validation Accuracy of AlexNet', color="blue")
+    axs[1].grid(linestyle='--')
+    axs[1].legend()
+    plt.tight_layout()
+    plt.savefig(f"Training_Validation_Accuracy_and_Cost_for_{model_name.lower()}.jpg", dpi=500)
+    plt.show()
+```
+
+Example usage:
+
+```{python}
+plot_training_curves(training_curves_list, model_name)
+```
+
+## 2.5. Underfitting and Overfitting
+
+- **Underfitting:** Model is too simple, poor performance on both training and test data.
+- **Overfitting:** Model learns noise in training data, poor generalization to test data.
+
+# 3. Evaluating the Model
+
+## 3.1. Model Evaluation Metrics
+
+Evaluate using accuracy, F1-score, and confusion matrix.
+
+```{python}
+def evaluate_model(model, model_name, test_loader, device, label_map, num_classes=10):
+    model.eval()
+    true_labels = []
+    pred_labels = []
+    space_sep_model_name = model_name.replace('_', ' ')
+    with torch.no_grad():
+        for x_test, y_test in test_loader:
+            x_test = x_test.to(device)
+            y_test = y_test.to(device)
+            z = model(x_test)
+            _, predicted = torch.max(z.data, 1)
+            true_labels.extend(y_test.cpu().numpy())
+            pred_labels.extend(predicted.cpu().numpy())
+    true_labels = np.array(true_labels)
+    pred_labels = np.array(pred_labels)
+    acc_test = (np.sum(true_labels == pred_labels) / len(true_labels)) * 100
+    print(f"Final Accuracy on Test Set = {acc_test:.2f} %")
+    cm = confusion_matrix(true_labels, pred_labels)
+    cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    plt.figure(figsize=(10, 8))
+    plt.imshow(cm_normalized, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.title(f'Normalized Confusion Matrix of {space_sep_model_name}')
+    plt.colorbar()
+    tick_marks = np.arange(num_classes)
+    class_names = [label_map[idx] for idx in range(num_classes)]
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+    fmt = '.2f'
+    thresh = cm_normalized.max() / 2.
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            plt.text(j, i, format(cm_normalized[i, j]*100, fmt),
+                     horizontalalignment="center",
+                     color="white" if cm_normalized[i, j] > thresh else "black")
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    plt.savefig(f"Confusion_Matrix_for_{model_name.lower()}.jpg", dpi=500)
+    plt.show()
+    report = classification_report(true_labels, pred_labels, target_names=class_names)
+    print('Classification Report:\n', report)
+```
+
+Example usage:
+
+```{python}
+evaluate_model(model, 'New_AlexNet', test_loader, device, label_map)
+```
+
+## 3.2. Comparing Models
+
+Load and evaluate a model trained for more epochs:
+
+```{python}
+def load_stored_model(model_name, filepath, device):
+    model = create_model(model_name, device)
+    model.load_state_dict(torch.load(filepath, map_location=device))
+    model.eval()
+    return model
+```
+
+```{python}
+filepath = '/kaggle/input/completely-trained-alexnet/pytorch/default/1/best_model_completely_trained_alexnet.pth'
+loaded_model = load_stored_model('AlexNet', filepath, device)
+evaluate_model(loaded_model, 'Completely_Trained_AlexNet', test_loader, device, label_map)
+```

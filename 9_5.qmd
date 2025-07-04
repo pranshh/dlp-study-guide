@@ -1,0 +1,98 @@
+---
+title: "L9.5: Case Study – AlexNet & VGGNet"
+format:
+  html:
+    code-fold: false
+page-navigation: true
+---
+
+
+# Case Study – AlexNet & VGGNet
+
+## Introduction: The Deep Learning Revolution
+
+AlexNet and VGGNet are two landmark convolutional neural network (CNN) architectures that dramatically advanced the field of computer vision. AlexNet, introduced in 2012, is credited with igniting the deep learning revolution by achieving a massive improvement in image classification accuracy. VGGNet, which followed, refined the approach by using deeper networks and smaller filters, setting new standards for CNN design.
+
+## AlexNet: Architecture and Innovations
+
+**AlexNet** consists of **8 layers** with learnable parameters: 5 convolutional layers followed by 3 fully connected layers. Max pooling and normalization layers are present but are not counted as separate layers since they do not have trainable weights.
+
+- **Input Size:** Fixed at $$227 \times 227 \times 3$$ (width × height × RGB channels). Because of the fully connected layers at the end, AlexNet requires all input images to be resized to this shape.
+- **Convolutional Layers:**
+  - **Layer 1:** 96 filters of size $$11 \times 11$$, stride 4. The stride reduces the spatial dimensions from 227 to about 55 ($$227/4$$), with some padding applied.
+  - **Layer 2:** 256 filters of size $$5 \times 5$$, stride 1, padding 2 (keeps spatial size the same).
+  - **Layers 3–5:** 384, 384, and 256 filters respectively, all with size $$3 \times 3$$, stride 1, padding 1.
+- **Pooling:** Max pooling layers with stride 2 follow some convolutional layers, halving the spatial dimensions at each step.
+- **Normalization:** Local Response Normalization (LRN) was used to control the range of activations, especially since ReLU activations can cause values to grow large.
+- **Activation:** AlexNet was the first major architecture to use the **ReLU activation function** ($$\text{ReLU}(x) = \max(0, x)$$), which improved training speed and mitigated the vanishing gradient problem common with sigmoid activations.
+- **Fully Connected Layers:** The output from the last convolutional layer is flattened and passed through three fully connected layers, with the final layer outputting 1000 nodes (for 1000 ImageNet classes).
+- **Softmax:** The final layer applies the softmax function to produce class probabilities.
+
+**Mathematical Notes:**
+- **Convolution Output Size:**  
+  $$
+  \text{Output size} = \frac{W - K + 2P}{S} + 1
+  $$
+  Where $$W$$ = input size, $$K$$ = filter size, $$P$$ = padding, $$S$$ = stride.
+
+- **Parameter Count Example:**  
+  A convolutional layer with $$K \times K$$ filters, $$C$$ input channels, and $$N$$ output channels has $$K \times K \times C \times N$$ parameters.
+
+**Training Techniques:**
+- **Data Augmentation:** Images were rotated, scaled, etc., to increase dataset diversity.
+- **Dropout:** Randomly dropping neurons in fully connected layers to prevent overfitting.
+- **Mini-Batch Stochastic Gradient Descent:** Training on small batches due to GPU memory limits.
+- **Ensembling:** Seven separate CNNs were trained, and their predictions combined for improved accuracy.
+- **L2 Weight Decay:** Regularization to prevent overfitting.
+
+**Hardware Note:**  
+AlexNet was trained on two GPUs, splitting the model due to limited GPU memory.
+
+*[Visual Cue: Diagram of AlexNet architecture, showing input, convolutional layers, pooling, normalization, fully connected layers, and softmax.]*
+
+## VGGNet: Deeper Networks, Smaller Filters
+
+**VGGNet** (notably VGG16 and VGG19) built on AlexNet’s success by using **very small filters ($$3 \times 3$$)** but stacking many more convolutional layers—16 or 19 in total.
+
+- **Input Size:** $$224 \times 224 \times 3$$
+- **Convolutional Layers:** All use $$3 \times 3$$ filters, stride 1, and padding 1 (so spatial size is preserved after convolution).
+- **Pooling:** $$2 \times 2$$ max pooling with stride 2, halving spatial dimensions after each pooling layer.
+- **Fully Connected Layers:** Three at the end, with the final layer outputting 1000 nodes for classification.
+
+**Key Mathematical Insight:**  
+Stacking three $$3 \times 3$$ convolutional layers gives an effective receptive field of $$7 \times 7$$ (since each layer “sees” a 3x3 region in the previous layer, and this stacks up).  
+- **Parameter Comparison:**
+  - A single $$7 \times 7$$ filter with $$C$$ input and output channels: $$7 \times 7 \times C \times C = 49C^2$$ parameters.
+  - Three stacked $$3 \times 3$$ filters: $$3 \times (3 \times 3 \times C \times C) = 27C^2$$ parameters.
+  - **Conclusion:** Stacking small filters reduces parameters, increases depth (and thus nonlinearity), and is computationally more efficient.
+
+**Layer-by-Layer Example:**
+- **First Conv Layer:** $$3 \times 3$$ filter, 64 output channels. Parameters: $$3 \times 3 \times 3 \times 64$$.
+- **Second Conv Layer:** $$3 \times 3$$ filter, 64 output channels. Parameters: $$3 \times 3 \times 64 \times 64$$.
+- **Pooling:** Reduces spatial size by half.
+- **Repeat:** The process continues, increasing the number of channels (e.g., 128, 256, 512) as the network goes deeper.
+- **Final Fully Connected:** After the last pooling, the feature map is flattened and passed through three fully connected layers, ending with 1000 outputs.
+
+**Memory and Parameter Analysis:**
+- **Memory Usage:** Highest in the initial convolutional layers due to large spatial size.
+- **Parameter Count:** Dominated by the fully connected layers at the end (e.g., over 100 million parameters in VGG16, most in the FC layers).
+
+**Generalization:**  
+VGG’s deep features (especially from the penultimate FC layer, “fc7”) generalize well to other tasks, making VGG a popular backbone for transfer learning and feature extraction in tasks like denoising and super-resolution.
+
+*[Visual Cue: Block diagram of VGG16, showing repeated stacks of 3x3 conv layers, pooling, and fully connected layers. Also, a parameter/memory usage chart across layers.]*
+
+## Summary Table: AlexNet vs. VGGNet
+
+| Feature                | AlexNet                       | VGGNet (VGG16)                |
+|------------------------|------------------------------|-------------------------------|
+| Year                   | 2012                         | 2014                          |
+| Input Size             | 227×227×3                    | 224×224×3                     |
+| Conv Filter Sizes      | 11×11, 5×5, 3×3              | 3×3 throughout                |
+| Depth (Learnable Layers)| 8                            | 16 (VGG16), 19 (VGG19)        |
+| Activation             | ReLU                         | ReLU                          |
+| Normalization          | Local Response Norm (LRN)     | None                          |
+| Pooling                | Max pooling                  | Max pooling                   |
+| FC Layers              | 3                            | 3                             |
+| Parameter Count        | ~60M                         | ~138M (mostly in FC layers)   |
+| Innovations            | ReLU, LRN, Dropout, Ensemble | Small filters, Deep stacking  |

@@ -1,0 +1,106 @@
+---
+title: "L9.4: Introduction to Object Recognition"
+format:
+  html:
+    code-fold: false
+page-navigation: true
+---
+
+## Introduction to Object Recognition
+
+### What Is Object Recognition?
+
+Object recognition is a foundational task in computer vision, where the goal is to identify the main object present in a given image. While humans perceive images as meaningful scenes, computers see them as arrays or matrices of numbers. The challenge is to bridge this gap—extracting semantic meaning from these numeric representations. In object recognition, the typical setup assumes that each image contains a single, dominant object, and the task is to assign the correct label (such as "cat," "dog," or "plane") to that image.
+
+![Image as seen by a human vs. matrix representation as seen by a computer](object_vs_matrix.png)
+
+---
+
+### Types of Information in Vision
+
+Vision systems extract two broad types of information from images:
+- **Semantic Information:** What objects are present, what kind of scene it is (e.g., outdoor, traffic), and their labels.
+- **Metric Information:** Measurement-based data, such as depth estimation from single or stereo cameras.
+
+Object recognition falls under the semantic category, focusing on labeling what is present in the image.
+
+---
+
+### Challenges in Object Recognition
+
+Recognizing objects is not always straightforward. There are several challenges:
+
+* **Viewpoint Variation:** The same object (e.g., a cat) can look very different from different angles.
+* **Illumination:** Lighting changes can dramatically alter an object’s appearance.
+* **Deformation:** Living beings can change shape (a cat stretching or curled up).
+* **Occlusion and Clutter:** Objects may be partially hidden or surrounded by distracting backgrounds.
+* **Intra-class Variation:** Objects of the same class can have many variations (different breeds or colors of cats).
+
+A robust recognition system must be invariant or resilient to all these factors.
+
+![Sequence of images showing the same cat under different lighting, angles, poses, and partial occlusion](cat_variations.png)
+
+---
+
+### Why Use CNNs for Object Recognition?
+
+Traditional neural networks (MLPs) are not well-suited for images due to the immense number of parameters required and their inability to exploit spatial structure. Convolutional Neural Networks (CNNs) are preferred because they use local connectivity and parameter sharing, which makes them efficient for image data. In CNNs, each neuron is only connected to a small region of the input (local receptive field), and the same set of weights (filters) is used across the image. This reduces the parameter count and leverages the spatial structure of images.
+
+![Diagram comparing dense MLP connections to local, shared CNN connections](mlp_vs_cnn.png)
+
+---
+
+### CNN Architecture: Key Layers and Operations
+
+The basic building blocks of a CNN for object recognition are:
+
+1. **Convolutional Layer:** Applies a set of filters to the input image, producing feature maps. Each filter is a small matrix (e.g., 5×5) that slides across the image, performing a dot product at each position. Mathematically, for an input image $$ I $$ and filter $$ K $$, the convolution output at position $$(i, j)$$ is:
+
+   $$
+   S(i, j) = (I * K)(i, j) = \sum_m \sum_n I(i+m, j+n) \cdot K(m, n)
+   $$
+
+   The stride $$ S $$ determines how far the filter moves at each step, and padding $$ P $$ controls the size of the output. The output spatial size is given by:
+
+   $$
+   \text{Output size} = \frac{W - K + 2P}{S} + 1
+   $$
+
+   where $$ W $$ is the input width, $$ K $$ is the kernel size, $$ P $$ is the padding, and $$ S $$ is the stride.
+
+2. **Activation (ReLU):** Introduces nonlinearity, typically using the Rectified Linear Unit:
+
+   $$
+   \text{ReLU}(x) = \max(0, x)
+   $$
+
+3. **Pooling Layer:** Reduces the spatial size of the feature maps, usually via max pooling (taking the maximum value in a window, e.g., 2×2), which helps with translation invariance and reduces computation.
+
+4. **Fully Connected Layer:** After several convolution and pooling layers, the feature maps are flattened into a vector and passed through one or more fully connected layers for final classification.
+
+![Block diagram: Input Image → Convolution → ReLU → Pooling → Fully Connected → Output Label](cnn_block.png)
+
+---
+
+### Historical Evolution: From LeNet to Deep Networks
+
+The evolution of object recognition architectures is marked by increasing depth and performance. The earliest notable CNN, **LeNet**, had a simple structure: convolution, pooling, convolution, pooling, and two fully connected layers, using 5×5 filters and 2×2 pooling with stride 2. However, LeNet was limited in its success for complex images and was outperformed by traditional methods (like SIFT features + SVM) until the deep learning revolution.
+
+The breakthrough came with **AlexNet** (2012), which used eight layers and achieved a dramatic reduction in error rates on the ImageNet challenge. This marked a shift from shallow, hand-crafted approaches to deep learning. Subsequent architectures like **VGG** (19 layers), **GoogLeNet** (22 layers), and **ResNet** (up to 152 layers) pushed the boundaries further, each time reducing error rates and improving recognition performance.
+
+![Timeline showing error rates dropping as networks get deeper: LeNet → AlexNet → VGG → GoogLeNet → ResNet](cnn_timeline.png)
+
+---
+
+### Mathematical Summary: CNN Hyperparameters
+
+- **Filter Size ($$ K $$):** The spatial size of the convolution kernel (e.g., 5×5).
+- **Stride ($$ S $$):** The number of pixels the filter moves at each step.
+- **Padding ($$ P $$):** Number of pixels added to the border of the input.
+- **Output Size** formula (for one dimension):
+
+  $$
+  \text{Output size} = \frac{W - K + 2P}{S} + 1
+  $$
+
+- **Parameter Sharing:** The same filter weights are used for all positions, reducing the number of parameters and
